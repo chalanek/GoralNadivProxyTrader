@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { TradeController } from '../controllers/tradeController';
 import { TradeService } from '../services/tradeService';
 import { Application } from 'express';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 const tradeService = new TradeService();
@@ -17,10 +18,9 @@ export function setRoutes(app: Application) {
         });
     });
 
-    // Zde začíná autentizace pro API
-    // app.use('/api', authMiddleware);  // Odkomentujte, pokud máte authMiddleware
+    // Aplikujte autentizaci POUZE na /api/trade endpointy
+    app.use('/api/trade', authenticate, router);
 
-    app.use('/api/trade', router);
     router.post('/create', tradeController.createTrade.bind(tradeController));
     router.get('/status/:id', tradeController.getTradeStatus.bind(tradeController));
 }

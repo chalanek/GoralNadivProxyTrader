@@ -11,7 +11,10 @@ const app = express();
 const PORT = config.PORT || 3000;
 
 app.use(json());
-app.use(authenticate);
+
+// ODSTRAŇTE globální autentizaci
+// app.use(authenticate);
+
 setRoutes(app);
 app.use(errorHandler);
 
