@@ -1,0 +1,75 @@
+# Závislosti
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+package-lock.json
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Citlivá data
+.env
+.env.local
+.env.*.local
+*.pem
+*-keypair.json
+
+# Build/distribuce
+dist/
+build/
+out/
+.output/
+*.tsbuildinfo
+.vscode-test/
+
+# Coverage a testy
+coverage/
+.nyc_output/
+.jest/
+
+# Soubory IDE a editoru
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vs/
+.history/
+*.sublime-*
+*.code-workspace
+
+# Operační systém
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logy
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dočasné soubory
+/tmp
+/temp
+.cache/
+
+# Vercel
+.vercel
+.now
+.next
+
+# Render
+.render
+
+# Další
+.husky/
+.turbo

@@ -1,0 +1,31 @@
+{
+  "name": "goral-nadiv-proxy-trader",
+  "version": "1.0.0",
+  "description": "A microservice that acts as a proxy for cryptocurrency trading, processing commands through the Binance API.",
+  "main": "src/app.ts",
+  "scripts": {
+    "start": "ts-node src/app.ts",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@types/winston": "^2.4.4",
+    "axios": "^0.21.1",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.22",
+    "@types/jest": "^27.0.0",
+    "@types/node": "^16.0.0",
+    "jest": "^27.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^4.3.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "license": "MIT"
+}
