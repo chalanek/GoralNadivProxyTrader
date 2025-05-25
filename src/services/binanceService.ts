@@ -25,6 +25,20 @@ export class BinanceService {
         };
     }
 
+    public async getServerTime(): Promise<any> {
+        try {
+            // Jednoduchý veřejný endpoint pro ověření dostupnosti
+            const response = await fetch('https://api.binance.com/api/v3/time');
+            if (!response.ok) {
+                throw new Error(`Binance API vrátilo chybu: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Chyba při kontaktování Binance API:', error);
+            throw error;
+        }
+    }
+
     public async fetchMarketData(symbol: string): Promise<MarketData> {
         // Zde implementujte logiku pro získání dat o trhu z Binance API
         console.log(`Fetching market data for: ${symbol}`);

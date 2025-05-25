@@ -1,7 +1,6 @@
 import { BinanceService } from './binanceService';
 import { Trade } from '../types/trade';
 
-
 export class TradeService {
     private binanceService: BinanceService;
 
@@ -18,6 +17,11 @@ export class TradeService {
         return result;
     }
 
+    public async getBinanceStatus(): Promise<any> {
+        // Využívá binanceService k provedení jednoduchého dotazu na Binance API
+        return await this.binanceService.getServerTime();
+    }
+
     public async getTradeStatus(tradeId: string): Promise<any> {
         // Logic to get trade status
         return await this.binanceService.fetchMarketData(tradeId);
@@ -25,8 +29,8 @@ export class TradeService {
 
     private validateTrade(trade: Trade): void {
         // Upravte validaci podle skutečné struktury Trade
-        if (!trade.symbol || !trade.quantity || !trade.price) {  // Změněno z amount na quantity, pokud Trade má quantity místo amount
-            throw new Error('Invalid trade data');
+        if (!trade.symbol || !trade.quantity || !trade.price) {
+            throw new Error('Invalid trade data: Missing required fields');
         }
     }
 }

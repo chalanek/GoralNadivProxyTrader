@@ -18,6 +18,24 @@ export function setRoutes(app: Application) {
         });
     });
 
+    app.get('/test-binance', async (req, res) => {
+        try {
+            // Jednoduchý dotaz na Binance API, který nevyžaduje autentizaci
+            const result = await tradeService.getBinanceStatus();
+            res.status(200).json({
+                binanceConnected: true,
+                serverTime: result.serverTime,
+                message: "Připojení k Binance je funkční"
+            });
+        } catch (error) {
+            res.status(500).json({
+                binanceConnected: false,
+                error: error instanceof Error ? error.message : String(error),
+                message: "Připojení k Binance selhalo"
+            });
+        }
+    });
+
     // Aplikujte autentizaci POUZE na /api/trade endpointy
     app.use('/api/trade', authenticate, router);
 
