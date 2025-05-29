@@ -49,4 +49,43 @@ export class BinanceService {
             timestamp: Date.now()
         };
     }
+
+    public async getAccountBalance(): Promise<any> {
+        try {
+            // Pro dotazy vyžadující autentizaci je potřeba přidat podpis
+            const timestamp = Date.now();
+            const queryString = `timestamp=${timestamp}`;
+
+            // Vytvoření podpisu pomocí HMAC SHA256
+            const signature = this.createSignature(queryString);
+
+            const url = `https://api.binance.com/api/v3/account?${queryString}&signature=${signature}`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-MBX-APIKEY': this.apiKey
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Binance API error: ${response.status}, ${JSON.stringify(errorData)}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error retrieving account balance:', error);
+            throw error;
+        }
+    }
+
+    // Pomocná metoda pro vytvoření podpisu
+    private createSignature(queryString: string): string {
+        const crypto = require('crypto');
+        return crypto
+            .createHmac('sha256', this.apiSecret)
+            .update(queryString)
+            .digest('hex');
+    }
 }

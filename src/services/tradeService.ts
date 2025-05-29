@@ -1,11 +1,30 @@
 import { BinanceService } from './binanceService';
 import { Trade } from '../types/trade';
 
+// Define AccountBalance type if not imported from elsewhere
+type AccountBalance = {
+    asset: string;
+    free: string;
+    locked?: string;
+};
+
+
 export class TradeService {
     private binanceService: BinanceService;
 
     constructor() {
         this.binanceService = new BinanceService();
+    }
+
+    public async getEurBalance(): Promise<number> {
+        // Volá binanceService pro získání stavu účtu
+        const accountInfo = await this.binanceService.getAccountBalance();
+
+        // Najděte EUR mezi všemi měnami
+        const eurBalance: AccountBalance | undefined = accountInfo.balances.find((b: AccountBalance) => b.asset === 'EUR');
+
+        // Vrátí dostupnou částku jako číslo (free = dostupná částka)
+        return eurBalance ? parseFloat(eurBalance.free) : 0;
     }
 
     public async createTrade(trade: Trade): Promise<any> {
