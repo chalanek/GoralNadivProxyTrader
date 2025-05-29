@@ -58,7 +58,7 @@ export function setRoutes(app: Application) {
 
             // Pro demonstraci použijeme statické porovnání
             // V produkci byste použili správné porovnání z databáze
-            const validApiKey = process.env.AUTH_API_KEY || 'demo-api-key';
+            const validApiKey = process.env.AUTH_API_KEY || 'demo-api';
             const validSecretKey = process.env.AUTH_SECRET_KEY || 'demo-secret';
 
             if (apiKey !== validApiKey || secretKey !== validSecretKey) {
