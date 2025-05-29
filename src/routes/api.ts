@@ -42,10 +42,26 @@ export function setRoutes(app: Application) {
         }
     });
 
+    app.get('/debug/auth', (req, res) => {
+        res.status(200).json({
+            auth_api_key_defined: !!process.env.AUTH_API_KEY,
+            auth_api_key_length: process.env.AUTH_API_KEY ? process.env.AUTH_API_KEY.length : 0,
+            auth_api_key_value: process.env.AUTH_API_KEY || 'undefined',
+            auth_secret_key_defined: !!process.env.AUTH_SECRET_KEY,
+            default_values: {
+                api_key: 'demo-api',
+                secret_key: 'demo-secret'
+            }
+        });
+    });
+
     // Endpoint pro generování JWT tokenu
     app.post('/auth/login', async (req, res) => {
         try {
             const { apiKey, secretKey } = req.body;
+            console.log(`Login attempt: apiKey=${apiKey}, secretKey=${secretKey}`);
+            console.log(`Expected: apiKey=${process.env.AUTH_API_KEY || 'demo-api'}, secretKey=${process.env.AUTH_SECRET_KEY || 'demo-secret'}`);
+
 
             // V reálné aplikaci byste zde ověřili přihlášení s databází
             // Pro jednoduchost zkontrolujeme jen proti statickým hodnotám
