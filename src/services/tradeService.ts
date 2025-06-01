@@ -9,6 +9,8 @@ export class TradeService {
         this.binanceService = new BinanceService();
     }
 
+
+
     public async getEurBalance(): Promise<number> {
         try {
             const accountInfo = await this.binanceService.getAccountBalance();
@@ -22,9 +24,10 @@ export class TradeService {
 
     public async buyCrypto(symbol: string, eurAmount: number): Promise<any> {
         try {
-            // Minimální kontrola
-            if (eurAmount < 10) {
-                throw new Error("Minimální částka pro nákup je 10 EUR");
+            // Dynamicky zjisti minimální částku pro symbol
+            const minNotional = await this.binanceService.getMinNotional(symbol);
+            if (eurAmount < minNotional) {
+                throw new Error(`Minimální částka pro nákup je ${minNotional} (dle Binance pravidel)`);
             }
 
             // Vytvoření objednávky pro MARKET nákup za eurAmount

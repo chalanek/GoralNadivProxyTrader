@@ -34,6 +34,11 @@ async function testBuyBtcWithEur(sellImmediately = false) {
         const symbol = 'BTCEUR';
         const eurAmount = 0.1; // Směna 0.1 EUR
 
+        // Zjisti minimální částku pro směnu z Binance
+        const minNotional = await binanceService.getMinNotional(symbol);
+        console.log(`Minimální částka pro směnu (dle Binance): ${minNotional} EUR`);
+
+
         // 4. Kontrola dostatečných prostředků
         if (eurBalanceBefore && parseFloat(eurBalanceBefore.free) < eurAmount) {
             console.error(`Nedostatek EUR pro směnu! Potřeba: ${eurAmount}, k dispozici: ${parseFloat(eurBalanceBefore.free)}`);

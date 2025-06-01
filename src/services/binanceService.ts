@@ -47,6 +47,32 @@ export class BinanceService {
         return key.substring(0, 4) + '...' + key.substring(key.length - 4);
     }
 
+    public async getMinNotional(symbol: string): Promise<number> {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/v3/exchangeInfo?symbol=${symbol}`);
+            if (!response.ok) {
+                throw new Error(`Failed to get exchange info: ${response.status}`);
+            }
+            const data = await response.json();
+            const symbolInfo = data.symbols && data.symbols[0];
+            if (!symbolInfo) {
+                throw new Error(`Symbol ${symbol} not found in exchange info`);
+            }
+            // Nejprve zkus NOTIONAL, pak MIN_NOTIONAL
+            let filter = symbolInfo.filters.find((f: any) => f.filterType === 'NOTIONAL');
+            if (!filter) {
+                filter = symbolInfo.filters.find((f: any) => f.filterType === 'MIN_NOTIONAL');
+            }
+            if (!filter) {
+                throw new Error(`MIN_NOTIONAL/NOTIONAL filter not found for symbol ${symbol}`);
+            }
+            return parseFloat(filter.minNotional);
+        } catch (error) {
+            console.error('Error getting min notional:', error);
+            throw error;
+        }
+    }
+
     public async getOrderStatus(orderId: string): Promise<any> {
         try {
             const timestamp = Date.now();
