@@ -1,4 +1,3 @@
-// src/services/tradeService.ts
 import { BinanceService } from './binanceService';
 import { TradeStatusResponse, Trade } from '../types/tradeTypes';
 
@@ -20,38 +19,27 @@ export class TradeService {
         }
     }
 
-    public async getEurBalance(): Promise<number> {
+    public async buyCrypto(symbol: string, amount: number, quoteAsset: string): Promise<any> {
         try {
-            const accountInfo = await this.binanceService.getAccountBalance();
-            const eurBalance = accountInfo.balances.find((b: any) => b.asset === 'EUR');
-            return eurBalance ? parseFloat(eurBalance.free) : 0;
-        } catch (error) {
-            console.error('Error getting EUR balance:', error);
-            throw error;
-        }
-    }
-
-    public async buyCrypto(symbol: string, eurAmount: number): Promise<any> {
-        try {
-            // Dynamicky zjisti minimální částku pro symbol
+            // Dynamically get min notional for the symbol
             const minNotional = await this.binanceService.getMinNotional(symbol);
-            if (eurAmount < minNotional) {
-                throw new Error(`Minimální částka pro nákup je ${minNotional} (dle Binance pravidel)`);
+            if (amount < minNotional) {
+                throw new Error(`Minimum amount for purchase is ${minNotional} ${quoteAsset} (according to Binance rules)`);
             }
 
-            // Vytvoření objednávky pro MARKET nákup za eurAmount
+            // Create MARKET order for the given amount in quoteAsset
             const trade = {
                 symbol: symbol,
                 side: 'BUY',
                 type: 'MARKET',
-                quoteOrderQty: eurAmount
+                quoteOrderQty: amount
             };
 
-            // Poslat objednávku na Binance
+            // Send order to Binance
             const result = await this.binanceService.executeTrade(trade);
             return result;
         } catch (error) {
-            console.error(`Chyba při nákupu ${symbol} za ${eurAmount} EUR:`, error);
+            console.error(`Error buying ${symbol} for ${amount} ${quoteAsset}:`, error);
             throw error;
         }
     }

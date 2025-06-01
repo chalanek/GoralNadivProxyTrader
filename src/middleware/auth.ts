@@ -1,7 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+/* =========================
+   AUTHENTICATION MIDDLEWARE
+   =========================
+*/
 
-// Rozšířený Request typ s uživatelskými informacemi
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken } from '../helpers/jwtHelper';
+
+// Extend Express Request type to include user information
 declare module 'express' {
     interface Request {
         user?: {
@@ -12,19 +17,25 @@ declare module 'express' {
     }
 }
 
+/**
+ * Express middleware to authenticate requests using JWT.
+ * Checks for a valid Bearer token in the Authorization header.
+ * If valid, attaches user info to req.user and calls next().
+ * Otherwise, responds with an appropriate error message.
+ */
 export const authenticate = (req: Request, res: Response, next: NextFunction) => {
     try {
-        // Získat authorization header
+        // Get the Authorization header
         const authHeader = req.headers.authorization;
 
         if (!authHeader) {
             return res.status(401).json({ message: 'Authorization header missing' });
         }
 
-        // Zkontrolovat formát (Bearer token)
+        // Check for Bearer token format
         const parts = authHeader.split(' ');
         if (parts.length !== 2 || parts[0] !== 'Bearer') {
-            return res.status(401).json({ message: 'Invalid authorization format. Use: Bearer token' });
+            return res.status(401).json({ message: 'Invalid authorization format. Use: Bearer <token>' });
         }
 
         const token = parts[1];
@@ -34,7 +45,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
             return res.status(401).json({ message: 'Invalid or expired token' });
         }
 
-        // Přidání informací o uživateli do Request
+        // Attach user info to the request object
         req.user = {
             userId: payload.userId,
             email: payload.email,

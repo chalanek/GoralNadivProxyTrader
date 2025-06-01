@@ -1,22 +1,28 @@
-import { Router } from 'express';
+/* =================================
+   API ROUTES FOR CRYPTO TRADING APP  
+   =================================
+*/
+
+import { Router, Application, Request, Response } from 'express';
 import { TradeController } from '../controllers/tradeController';
 import { TradeService } from '../services/tradeService';
-import { Application } from 'express';
 import { authenticate } from '../middleware/auth';
-import { generateToken } from '../utils/jwt';
+import { generateToken } from '../helpers/jwtHelper';
 import dotenv from 'dotenv';
 
 dotenv.config();
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ? parseInt(process.env.JWT_EXPIRES_IN) : 24 * 60 * 60; // Default to 24 hours
 
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN
+    ? parseInt(process.env.JWT_EXPIRES_IN)
+    : 24 * 60 * 60; // Default to 24 hours
 
 const router = Router();
 const tradeService = new TradeService();
 const tradeController = new TradeController(tradeService);
 
 export function setRoutes(app: Application) {
-    // Health check endpoint - bez autentizace
-    app.get('/health', (req, res) => {
+    // Health check (no authentication)
+    app.get('/health', (_req: Request, res: Response) => {
         res.status(200).json({
             status: 'UP',
             timestamp: new Date().toISOString(),
@@ -24,25 +30,26 @@ export function setRoutes(app: Application) {
         });
     });
 
-    app.get('/test-binance', async (req, res) => {
+    // Simple Binance connectivity test
+    app.get('/test-binance', async (_req: Request, res: Response) => {
         try {
-            // Jednoduchý dotaz na Binance API, který nevyžaduje autentizaci
             const result = await tradeService.getBinanceStatus();
             res.status(200).json({
                 binanceConnected: true,
                 serverTime: result.serverTime,
-                message: "Připojení k Binance je funkční"
+                message: "Binance connection is working"
             });
         } catch (error) {
             res.status(500).json({
                 binanceConnected: false,
                 error: error instanceof Error ? error.message : String(error),
-                message: "Připojení k Binance selhalo"
+                message: "Binance connection failed"
             });
         }
     });
 
-    app.get('/debug/auth', (req, res) => {
+    // Debug endpoint for authentication variables
+    app.get('/debug/auth', (_req: Request, res: Response) => {
         res.status(200).json({
             auth_api_key_defined: !!process.env.AUTH_API_KEY,
             auth_api_key_length: process.env.AUTH_API_KEY ? process.env.AUTH_API_KEY.length : 0,
@@ -55,36 +62,27 @@ export function setRoutes(app: Application) {
         });
     });
 
-    // Endpoint pro generování JWT tokenu
-    app.post('/auth/login', async (req, res) => {
+    // JWT login endpoint
+    app.post('/auth/login', async (req: Request, res: Response) => {
         try {
             const { apiKey, secretKey } = req.body;
-            console.log(`Login attempt: apiKey=${apiKey}, secretKey=${secretKey}`);
-            console.log(`Expected: apiKey=${process.env.AUTH_API_KEY || 'demo-api'}, secretKey=${process.env.AUTH_SECRET_KEY || 'demo-secret'}`);
-
-
-            // V reálné aplikaci byste zde ověřili přihlášení s databází
-            // Pro jednoduchost zkontrolujeme jen proti statickým hodnotám
             if (!apiKey || !secretKey) {
                 return res.status(400).json({
                     success: false,
-                    message: 'API key a Secret key jsou povinné'
+                    message: 'API key and Secret key are required'
                 });
             }
 
-            // Pro demonstraci použijeme statické porovnání
-            // V produkci byste použili správné porovnání z databáze
             const validApiKey = process.env.AUTH_API_KEY || 'demo-api';
             const validSecretKey = process.env.AUTH_SECRET_KEY || 'demo-secret';
 
             if (apiKey !== validApiKey || secretKey !== validSecretKey) {
                 return res.status(401).json({
                     success: false,
-                    message: 'Neplatné přihlašovací údaje'
+                    message: 'Invalid credentials'
                 });
             }
 
-            // Generování tokenu
             const token = generateToken({
                 userId: 'demo-user-id',
                 role: 'api-user'
@@ -92,102 +90,84 @@ export function setRoutes(app: Application) {
 
             res.status(200).json({
                 success: true,
-                token: token,
+                token,
                 expiresIn: JWT_EXPIRES_IN,
-                message: 'Autentizace úspěšná'
+                message: 'Authentication successful'
             });
         } catch (error) {
             res.status(500).json({
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
-                message: 'Chyba při autentizaci'
+                message: 'Authentication error'
             });
         }
     });
 
-    // Vrátí zůstatek účtu pro zvolenou měnu (např. EUR, BTC, USDT)
-    app.get('/balance/:asset', authenticate, async (req, res) => {
+    // Get account balance for a selected asset (e.g. EUR, BTC, USDT)
+    app.get('/balance/:asset', authenticate, async (req: Request, res: Response) => {
         try {
             const asset = req.params.asset?.toUpperCase();
             if (!asset) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Musíte zadat kód měny (např. EUR, BTC, USDT)'
+                    message: 'You must provide an asset code (e.g. EUR, BTC, USDT)'
                 });
             }
             const balance = await tradeService.getBalance(asset);
             res.status(200).json({
                 success: true,
-                asset: asset,
-                balance: balance,
-                message: `Dostupná částka ${asset} na Binance účtu`
+                asset,
+                balance,
+                message: `Available ${asset} balance on Binance account`
             });
         } catch (error) {
             res.status(500).json({
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
-                message: "Nepodařilo se získat zůstatek účtu"
+                message: "Failed to retrieve account balance"
             });
         }
     });
 
-    // Vrátí zůstatku účtu v EUR
-    app.get('/balance/eur', authenticate, async (req, res) => {
+    // Buy crypto endpoint
+    app.post('/trade/buy-crypto', authenticate, async (req: Request, res: Response) => {
         try {
-            const balance = await tradeService.getEurBalance();
-            res.status(200).json({
-                success: true,
-                balance: balance,
-                message: "Dostupná částka EUR na Binance účtu"
-            });
-        } catch (error) {
-            res.status(500).json({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-                message: "Nepodařilo se získat zůstatek účtu"
-            });
-        }
-    });
+            const { symbol, amount, quoteAsset } = req.body;
 
-    app.post('/trade/buy-crypto', authenticate, async (req, res) => {
-        try {
-            const { symbol, eurAmount, price } = req.body;
-
-            // Validace vstupních parametrů
-            if (!symbol || !eurAmount || eurAmount <= 0) {
+            if (!symbol || !amount || amount <= 0 || !quoteAsset) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Je nutné zadat symbol kryptoměny a kladnou částku EUR'
+                    message: 'You must provide a crypto symbol, a positive amount, and a quote asset (e.g. EUR, USDT)'
                 });
             }
 
-            // Zkontrolujeme, zda máme dostatek EUR na účtu
-            const eurBalance = await tradeService.getEurBalance();
-            if (eurAmount > eurBalance) {
+            // Check balance of the selected quote asset
+            const assetBalance = await tradeService.getBalance(quoteAsset.toUpperCase());
+            if (amount > assetBalance) {
                 return res.status(400).json({
                     success: false,
-                    message: `Nedostatek prostředků. Požadováno: ${eurAmount} EUR, k dispozici: ${eurBalance} EUR`
+                    message: `Insufficient funds. Requested: ${amount} ${quoteAsset}, available: ${assetBalance} ${quoteAsset}`
                 });
             }
 
-            // Vytvořit objednávku na nákup
-            const result = await tradeService.buyCrypto(symbol, eurAmount);
+            // Buy crypto for the selected quote asset
+            const result = await tradeService.buyCrypto(symbol, amount, quoteAsset.toUpperCase());
 
             res.status(200).json({
                 success: true,
                 transaction: result,
-                message: `Úspěšně nakoupeno ${result.executedQty} ${symbol} za ${eurAmount} EUR`
+                message: `Successfully bought ${result.executedQty} ${symbol} for ${amount} ${quoteAsset}`
             });
         } catch (error) {
             res.status(500).json({
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
-                message: 'Chyba při provádění nákupu kryptoměny'
+                message: 'Error while buying crypto'
             });
         }
     });
 
-    // Aplikujte autentizaci POUZE na /api/trade endpointy
+    // Apply authentication only to /api/trade endpoints
     app.use('/api/trade', authenticate, router);
 
     router.post('/create', tradeController.createTrade.bind(tradeController));

@@ -9,9 +9,7 @@
     "check-keys": "ts-node src/debug/checkApiKeys.ts",
     "getEur": "npx ts-node src/getEurBalance.ts",
     "build": "tsc",
-    "test": "jest",
-    "debug-env": "node -e \"console.log('DEBUG - NODE_ENV:', process.env.NODE_ENV); console.log('PATH:', process.env.PATH);\"",
-    "debug-getEurBalance": "cross-env NODE_OPTIONS=\"--trace-warnings --trace-uncaught\" ts-node src/getEurBalance.ts > debug-output.log 2>&1"
+    "test": "jest"
   },
   "dependencies": {
     "@types/winston": "^2.4.4",
