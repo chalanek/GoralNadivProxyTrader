@@ -3,3 +3,12 @@ export interface TradeStatusResponse {
     status: string;
     [key: string]: any;
 }
+
+export interface Trade {
+    symbol: string;
+    side: 'BUY' | 'SELL';
+    type: 'MARKET' | 'LIMIT';
+    quantity?: number;
+    price?: number;
+    quoteOrderQty?: number;
+}

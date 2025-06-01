@@ -1,50 +1,19 @@
-// src/services/binanceService.ts
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-import environment from '../config'; // Importujte upravenou konfiguraci
 
-export class BinanceService {
+export class TestnetBinanceService {
     private apiKey: string;
     private apiSecret: string;
-    private baseUrl: string;
+    private baseUrl: string = 'https://testnet.binance.vision'; // Testnet URL
 
     constructor() {
-        // Ujistěte se, že .env je načtený
-        if (!process.env.BINANCE_API_KEY || !process.env.BINANCE_TESTNET_API_KEY) {
-            dotenv.config();
-        }
-
-        // Načtení přímo z prostředí pro diagnostiku
-        const useTestnet = process.env.USE_BINANCE_TESTNET === 'true';
-        console.log(`USE_BINANCE_TESTNET přímo z process.env: ${process.env.USE_BINANCE_TESTNET}`);
-
-        this.apiKey = useTestnet
-            ? process.env.BINANCE_TESTNET_API_KEY || ''
-            : process.env.BINANCE_API_KEY || '';
-
-        this.apiSecret = useTestnet
-            ? process.env.BINANCE_TESTNET_API_SECRET || ''
-            : process.env.BINANCE_API_SECRET || '';
-
-        this.baseUrl = useTestnet
-            ? 'https://testnet.binance.vision'
-            : 'https://api.binance.com';
-
-        // Debug výpis klíčů (bezpečné - zobrazují se pouze části klíčů)
-        console.log(`API Key (${useTestnet ? 'TESTNET' : 'PROD'}): ${this.maskKey(this.apiKey)}`);
-        console.log(`API Secret (${useTestnet ? 'TESTNET' : 'PROD'}): ${this.maskKey(this.apiSecret)}`);
-        console.log(`Base URL: ${this.baseUrl}`);
+        this.apiKey = process.env.BINANCE_TESTNET_API_KEY || '';
+        this.apiSecret = process.env.BINANCE_TESTNET_API_SECRET || '';
 
         if (!this.apiKey || !this.apiSecret) {
-            throw new Error('API klíče pro Binance nejsou správně nastaveny v konfiguraci');
+            throw new Error('BINANCE_TESTNET_API_KEY a BINANCE_TESTNET_API_SECRET musí být nastaveny v .env souboru');
         }
-    }
 
-    // Pomocná metoda pro maskování klíčů
-    private maskKey(key: string): string {
-        if (!key) return 'undefined';
-        if (key.length <= 8) return '****';
-        return key.substring(0, 4) + '...' + key.substring(key.length - 4);
+        console.log(`Testnet API Key načten (${this.apiKey.substring(0, 4)}...${this.apiKey.substring(this.apiKey.length - 4)})`);
     }
 
     public async getOrderStatus(orderId: string): Promise<any> {
@@ -60,6 +29,10 @@ export class BinanceService {
                 }
             });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Binance API error: ${response.status}, ${JSON.stringify(errorData)}`);
+            }
 
             return await response.json();
         } catch (error) {
@@ -102,7 +75,7 @@ export class BinanceService {
             const signature = this.createSignature(queryString);
 
             // Odeslat požadavek
-            const response = await fetch(`${this.baseUrl}/api/v3/order?${queryString}&signature=${signature}`, { // Použít this.baseUrl
+            const response = await fetch(`${this.baseUrl}/api/v3/order?${queryString}&signature=${signature}`, {
                 method: 'POST',
                 headers: {
                     'X-MBX-APIKEY': this.apiKey
@@ -127,13 +100,15 @@ export class BinanceService {
             const queryString = `timestamp=${timestamp}`;
             const signature = this.createSignature(queryString);
 
-            const response = await fetch(`${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`, { // Použít this.baseUrl
+            const response = await fetch(`${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`, {
                 headers: {
                     'X-MBX-APIKEY': this.apiKey
                 }
             });
 
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Testnet API odpověď:', response.status, errorText);
                 throw new Error(`Failed to get account balance: ${response.status}`);
             }
 
@@ -146,7 +121,7 @@ export class BinanceService {
 
     public async getServerTime(): Promise<any> {
         try {
-            const response = await fetch(`${this.baseUrl}/api/v3/time`); // Použít this.baseUrl
+            const response = await fetch(`${this.baseUrl}/api/v3/time`);
             if (!response.ok) {
                 throw new Error(`Failed to get server time: ${response.status}`);
             }

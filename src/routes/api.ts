@@ -50,7 +50,7 @@ export function setRoutes(app: Application) {
             auth_secret_key_defined: !!process.env.AUTH_SECRET_KEY,
             default_values: {
                 api_key: 'demo-api',
-                secret_key: 'demo-secret'
+                secret_key: 'demo_secret'
             }
         });
     });
@@ -119,6 +119,44 @@ export function setRoutes(app: Application) {
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
                 message: "Nepodařilo se získat zůstatek účtu"
+            });
+        }
+    });
+
+    app.post('/trade/buy-crypto', authenticate, async (req, res) => {
+        try {
+            const { symbol, eurAmount, price } = req.body;
+
+            // Validace vstupních parametrů
+            if (!symbol || !eurAmount || eurAmount <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Je nutné zadat symbol kryptoměny a kladnou částku EUR'
+                });
+            }
+
+            // Zkontrolujeme, zda máme dostatek EUR na účtu
+            const eurBalance = await tradeService.getEurBalance();
+            if (eurAmount > eurBalance) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Nedostatek prostředků. Požadováno: ${eurAmount} EUR, k dispozici: ${eurBalance} EUR`
+                });
+            }
+
+            // Vytvořit objednávku na nákup
+            const result = await tradeService.buyCrypto(symbol, eurAmount);
+
+            res.status(200).json({
+                success: true,
+                transaction: result,
+                message: `Úspěšně nakoupeno ${result.executedQty} ${symbol} za ${eurAmount} EUR`
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+                message: 'Chyba při provádění nákupu kryptoměny'
             });
         }
     });
