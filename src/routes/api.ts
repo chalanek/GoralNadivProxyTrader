@@ -153,9 +153,13 @@ export function setRoutes(app: Application) {
             // Buy crypto for the selected quote asset
             const result = await tradeService.buyCrypto(symbol, amount, quoteAsset.toUpperCase());
 
+            // Extract tradeId from the first fill if available
+            const tradeId = result.fills && result.fills.length > 0 ? result.fills[0].tradeId : null;
+
             res.status(200).json({
                 success: true,
                 orderId: result.orderId,
+                tradeId: tradeId,
                 type: result.type,
                 transaction: result,
                 message: `Successfully bought ${result.executedQty} ${symbol} for ${amount} ${quoteAsset}`
