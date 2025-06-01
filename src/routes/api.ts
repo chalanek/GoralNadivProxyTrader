@@ -155,6 +155,8 @@ export function setRoutes(app: Application) {
 
             res.status(200).json({
                 success: true,
+                orderId: result.orderId,
+                type: result.type,
                 transaction: result,
                 message: `Successfully bought ${result.executedQty} ${symbol} for ${amount} ${quoteAsset}`
             });
