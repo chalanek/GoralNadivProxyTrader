@@ -9,7 +9,16 @@ export class TradeService {
         this.binanceService = new BinanceService();
     }
 
-
+    public async getBalance(asset: string): Promise<number> {
+        try {
+            const accountInfo = await this.binanceService.getAccountBalance();
+            const balanceObj = accountInfo.balances.find((b: any) => b.asset === asset);
+            return balanceObj ? parseFloat(balanceObj.free) : 0;
+        } catch (error) {
+            console.error(`Error getting ${asset} balance:`, error);
+            throw error;
+        }
+    }
 
     public async getEurBalance(): Promise<number> {
         try {

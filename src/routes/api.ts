@@ -105,6 +105,32 @@ export function setRoutes(app: Application) {
         }
     });
 
+    // Vrátí zůstatek účtu pro zvolenou měnu (např. EUR, BTC, USDT)
+    app.get('/balance/:asset', authenticate, async (req, res) => {
+        try {
+            const asset = req.params.asset?.toUpperCase();
+            if (!asset) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Musíte zadat kód měny (např. EUR, BTC, USDT)'
+                });
+            }
+            const balance = await tradeService.getBalance(asset);
+            res.status(200).json({
+                success: true,
+                asset: asset,
+                balance: balance,
+                message: `Dostupná částka ${asset} na Binance účtu`
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+                message: "Nepodařilo se získat zůstatek účtu"
+            });
+        }
+    });
+
     // Vrátí zůstatku účtu v EUR
     app.get('/balance/eur', authenticate, async (req, res) => {
         try {
