@@ -44,9 +44,40 @@ export class TradeService {
         }
     }
 
+    /**
+ * Sells crypto for a selected base asset.
+ * @param symbol Trading pair symbol (e.g. BTCEUR)
+ * @param amount Amount of base asset to sell (e.g. BTC)
+ * @param baseAsset The asset you are selling (e.g. BTC)
+ * @returns Binance API response
+ */
+    public async sellCrypto(symbol: string, amount: number, baseAsset: string): Promise<any> {
+        try {
+            // Get minimum quantity for the symbol (if needed, you can implement getMinQty)
+            // For simplicity, we skip this check here, but you can add similar logic as in buyCrypto
+
+            // Create MARKET order for the given amount in baseAsset
+            const trade = {
+                symbol: symbol,
+                side: 'SELL',
+                type: 'MARKET',
+                quantity: amount
+            };
+
+            // Send order to Binance
+            const result = await this.binanceService.executeTrade(trade);
+            return result;
+        } catch (error) {
+            console.error(`Error selling ${amount} ${baseAsset} for pair ${symbol}:`, error);
+            throw error;
+        }
+    }
+
     public async getBinanceStatus(): Promise<any> {
         return await this.binanceService.getServerTime();
     }
+
+
 
     /**
      * Vytvoří nový obchod

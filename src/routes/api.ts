@@ -173,6 +173,49 @@ export function setRoutes(app: Application) {
         }
     });
 
+    app.post('/trade/sell-crypto', authenticate, async (req: Request, res: Response) => {
+        try {
+            const { symbol, amount, baseAsset } = req.body;
+
+            if (!symbol || !amount || amount <= 0 || !baseAsset) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'You must provide a crypto symbol, a positive amount, and a base asset (e.g. BTC, ETH)'
+                });
+            }
+
+            // Check balance of the selected base asset
+            const assetBalance = await tradeService.getBalance(baseAsset.toUpperCase());
+            if (amount > assetBalance) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient funds. Requested: ${amount} ${baseAsset}, available: ${assetBalance} ${baseAsset}`
+                });
+            }
+
+            // Sell crypto for the selected base asset
+            const result = await tradeService.sellCrypto(symbol, amount, baseAsset.toUpperCase());
+
+            // Extract tradeId from the first fill if available
+            const tradeId = result.fills && result.fills.length > 0 ? result.fills[0].tradeId : null;
+
+            res.status(200).json({
+                success: true,
+                orderId: result.orderId,
+                tradeId: tradeId,
+                type: result.type,
+                transaction: result,
+                message: `Successfully sold ${result.executedQty} ${baseAsset} in pair ${symbol}`
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+                message: 'Error while selling crypto'
+            });
+        }
+    });
+
     // Apply authentication only to /api/trade endpoints
     app.use('/api/trade', authenticate, router);
 
