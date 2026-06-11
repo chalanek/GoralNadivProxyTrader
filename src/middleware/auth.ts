@@ -1,22 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import config from '../config';
+import { JwtPayload } from '../types/auth';
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers['authorization'];
+/**
+ * Express middleware that verifies a Bearer JWT and attaches Binance credentials to the request.
+ * Returns 401 if the token is missing, malformed, or expired.
+ * @param req - Express request
+ * @param res - Express response
+ * @param next - Next middleware function
+ */
+export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
 
-    if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ success: false, message: 'Missing or invalid authorization header' });
+    return;
+  }
 
-    // Here you would typically verify the token
-    // For example, using a library like jsonwebtoken
-    // jwt.verify(token, secretKey, (err, decoded) => {
-    //     if (err) {
-    //         return res.status(401).json({ message: 'Unauthorized' });
-    //     }
-    //     req.user = decoded; // Attach user info to request
-    //     next();
-    // });
+  const token = authHeader.slice(7);
 
-    // For now, we'll just call next() to proceed
+  try {
+    const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
+    req.binanceCredentials = {
+      apiKey: decoded.apiKey,
+      secretKey: decoded.secretKey,
+    };
     next();
-};
+  } catch {
+    res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  }
+}
