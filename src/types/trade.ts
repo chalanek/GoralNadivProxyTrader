@@ -1,22 +1,19 @@
-export interface Trade {
-    id: string;
-    symbol: string;
-    quantity: number;
-    price: number;
-    side: 'buy' | 'sell';
-    status: 'pending' | 'completed' | 'failed';
-    createdAt: Date;
-    updatedAt: Date;
+export interface BuyCryptoRequest {
+  symbol: string;
+  amount: number;
+  quoteAsset: string;
 }
 
-export interface TradeRequest {
-    symbol: string;
-    quantity: number;
-    price: number;
-    side: 'buy' | 'sell';
+export interface SellCryptoRequest {
+  symbol: string;
+  amount: number;
+  baseAsset: string;
 }
 
 export interface TradeResponse {
-    trade: Trade;
-    message: string;
+  success: boolean;
+  orderId?: string;
+  tradeId?: string;
+  id?: string;
+  message?: string;
 }

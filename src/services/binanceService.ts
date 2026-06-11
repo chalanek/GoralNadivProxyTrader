@@ -1,192 +1,136 @@
-// src/services/binanceService.ts
+import axios from 'axios';
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-import environment from '../config'; // Importujte upravenou konfiguraci
+import {
+  BinanceAccountResponse,
+  BinanceKline,
+  BinanceOrderResponse,
+} from '../types/binance';
+
+const BINANCE_BASE_URL = 'https://api.binance.com';
+
+function sign(queryString: string, secret: string): string {
+  return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
+}
+
+function toQueryString(params: Record<string, string | number>): string {
+  return new URLSearchParams(
+    Object.entries(params).map(([k, v]) => [k, String(v)]),
+  ).toString();
+}
 
 export class BinanceService {
-    private apiKey: string;
-    private apiSecret: string;
-    private baseUrl: string;
+  constructor(
+    private readonly apiKey: string,
+    private readonly secretKey: string,
+  ) {}
 
-    constructor() {
-        // Ujistěte se, že .env je načtený
-        if (!process.env.BINANCE_API_KEY || !process.env.BINANCE_TESTNET_API_KEY) {
-            dotenv.config();
-        }
+  /**
+   * Sends an authenticated GET request to a Binance signed endpoint.
+   * @param path - API path, e.g. /api/v3/account
+   * @param extraParams - Additional query params beyond `timestamp`
+   * @returns Parsed response body
+   */
+  private async signedGet<T>(
+    path: string,
+    extraParams: Record<string, string | number> = {},
+  ): Promise<T> {
+    const params: Record<string, string | number> = { ...extraParams, timestamp: Date.now() };
+    const qs = toQueryString(params);
+    const signature = sign(qs, this.secretKey);
 
-        // Načtení přímo z prostředí pro diagnostiku
-        const useTestnet = process.env.USE_BINANCE_TESTNET === 'true';
-        console.log(`USE_BINANCE_TESTNET přímo z process.env: ${process.env.USE_BINANCE_TESTNET}`);
+    const response = await axios.get<T>(`${BINANCE_BASE_URL}${path}`, {
+      params: { ...params, signature },
+      headers: { 'X-MBX-APIKEY': this.apiKey },
+    });
+    return response.data;
+  }
 
-        this.apiKey = useTestnet
-            ? process.env.BINANCE_TESTNET_API_KEY || ''
-            : process.env.BINANCE_API_KEY || '';
+  /**
+   * Sends an authenticated POST request to a Binance signed endpoint.
+   * @param path - API path, e.g. /api/v3/order
+   * @param extraParams - Order params beyond `timestamp`
+   * @returns Parsed response body
+   */
+  private async signedPost<T>(
+    path: string,
+    extraParams: Record<string, string | number>,
+  ): Promise<T> {
+    const params: Record<string, string | number> = { ...extraParams, timestamp: Date.now() };
+    const qs = toQueryString(params);
+    const signature = sign(qs, this.secretKey);
 
-        this.apiSecret = useTestnet
-            ? process.env.BINANCE_TESTNET_API_SECRET || ''
-            : process.env.BINANCE_API_SECRET || '';
+    const response = await axios.post<T>(`${BINANCE_BASE_URL}${path}`, null, {
+      params: { ...params, signature },
+      headers: { 'X-MBX-APIKEY': this.apiKey },
+    });
+    return response.data;
+  }
 
-        this.baseUrl = useTestnet
-            ? 'https://testnet.binance.vision'
-            : 'https://api.binance.com';
+  /**
+   * Validates the provided credentials by calling the authenticated Binance account endpoint.
+   * Throws an AxiosError if credentials are rejected by Binance (HTTP 401/403).
+   */
+  async validateCredentials(): Promise<void> {
+    await this.signedGet<BinanceAccountResponse>('/api/v3/account');
+  }
 
-        // Debug výpis klíčů (bezpečné - zobrazují se pouze části klíčů)
-        console.log(`API Key (${useTestnet ? 'TESTNET' : 'PROD'}): ${this.maskKey(this.apiKey)}`);
-        console.log(`API Secret (${useTestnet ? 'TESTNET' : 'PROD'}): ${this.maskKey(this.apiSecret)}`);
-        console.log(`Base URL: ${this.baseUrl}`);
+  /**
+   * Returns the free balance for the given asset from the authenticated account.
+   * @param currency - Asset symbol, case-insensitive (e.g. BTC, usdt)
+   * @returns Free balance as a decimal string; '0' when the asset is not found
+   */
+  async getBalance(currency: string): Promise<string> {
+    const data = await this.signedGet<BinanceAccountResponse>('/api/v3/account');
+    const asset = data.balances.find((b) => b.asset === currency.toUpperCase());
+    return asset?.free ?? '0';
+  }
 
-        if (!this.apiKey || !this.apiSecret) {
-            throw new Error('API klíče pro Binance nejsou správně nastaveny v konfiguraci');
-        }
-    }
+  /**
+   * Places a MARKET BUY order using quote-asset quantity (quoteOrderQty).
+   * @param symbol - Trading pair, e.g. BTCUSDT
+   * @param quoteOrderQty - Amount of the quote asset to spend (e.g. 100 USDT)
+   * @returns Binance order confirmation
+   */
+  async marketBuy(symbol: string, quoteOrderQty: number): Promise<BinanceOrderResponse> {
+    return this.signedPost<BinanceOrderResponse>('/api/v3/order', {
+      symbol,
+      side: 'BUY',
+      type: 'MARKET',
+      quoteOrderQty,
+    });
+  }
 
-    // Pomocná metoda pro maskování klíčů
-    private maskKey(key: string): string {
-        if (!key) return 'undefined';
-        if (key.length <= 8) return '****';
-        return key.substring(0, 4) + '...' + key.substring(key.length - 4);
-    }
+  /**
+   * Places a MARKET SELL order using base-asset quantity.
+   * @param symbol - Trading pair, e.g. BTCUSDT
+   * @param quantity - Amount of the base asset to sell (e.g. 0.001 BTC)
+   * @returns Binance order confirmation
+   */
+  async marketSell(symbol: string, quantity: number): Promise<BinanceOrderResponse> {
+    return this.signedPost<BinanceOrderResponse>('/api/v3/order', {
+      symbol,
+      side: 'SELL',
+      type: 'MARKET',
+      quantity,
+    });
+  }
+}
 
-    public async getMinNotional(symbol: string): Promise<number> {
-        try {
-            const response = await fetch(`${this.baseUrl}/api/v3/exchangeInfo?symbol=${symbol}`);
-            if (!response.ok) {
-                throw new Error(`Failed to get exchange info: ${response.status}`);
-            }
-            const data = await response.json();
-            const symbolInfo = data.symbols && data.symbols[0];
-            if (!symbolInfo) {
-                throw new Error(`Symbol ${symbol} not found in exchange info`);
-            }
-            // Nejprve zkus NOTIONAL, pak MIN_NOTIONAL
-            let filter = symbolInfo.filters.find((f: any) => f.filterType === 'NOTIONAL');
-            if (!filter) {
-                filter = symbolInfo.filters.find((f: any) => f.filterType === 'MIN_NOTIONAL');
-            }
-            if (!filter) {
-                throw new Error(`MIN_NOTIONAL/NOTIONAL filter not found for symbol ${symbol}`);
-            }
-            return parseFloat(filter.minNotional);
-        } catch (error) {
-            console.error('Error getting min notional:', error);
-            throw error;
-        }
-    }
-
-    public async getOrderStatus(orderId: string): Promise<any> {
-        try {
-            const timestamp = Date.now();
-            const queryString = `orderId=${orderId}&timestamp=${timestamp}`;
-            const signature = this.createSignature(queryString);
-
-            const response = await fetch(`${this.baseUrl}/api/v3/order?${queryString}&signature=${signature}`, {
-                method: 'GET',
-                headers: {
-                    'X-MBX-APIKEY': this.apiKey
-                }
-            });
-
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error getting order status:', error);
-            throw error;
-        }
-    }
-
-    public async executeTrade(tradeParams: any): Promise<any> {
-        try {
-            const timestamp = Date.now();
-
-            // Základní parametry
-            let params: Record<string, any> = {
-                symbol: tradeParams.symbol,
-                side: tradeParams.side,
-                type: tradeParams.type,
-                timestamp: timestamp
-            };
-
-            // Přidání parametrů podle typu objednávky
-            if (tradeParams.type === 'MARKET') {
-                if (tradeParams.quoteOrderQty) {
-                    params.quoteOrderQty = tradeParams.quoteOrderQty;
-                } else if (tradeParams.quantity) {
-                    params.quantity = tradeParams.quantity;
-                }
-            } else if (tradeParams.type === 'LIMIT') {
-                params.quantity = tradeParams.quantity;
-                params.price = tradeParams.price;
-                params.timeInForce = 'GTC';
-            }
-
-            // Převést na query string
-            const queryString = Object.entries(params)
-                .map(([key, value]) => `${key}=${value}`)
-                .join('&');
-
-            // Podepsat požadavek
-            const signature = this.createSignature(queryString);
-
-            // Odeslat požadavek
-            const response = await fetch(`${this.baseUrl}/api/v3/order?${queryString}&signature=${signature}`, { // Použít this.baseUrl
-                method: 'POST',
-                headers: {
-                    'X-MBX-APIKEY': this.apiKey
-                }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`Binance API error: ${response.status}, ${JSON.stringify(errorData)}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error executing trade:', error);
-            throw error;
-        }
-    }
-
-    public async getAccountBalance(): Promise<any> {
-        try {
-            const timestamp = Date.now();
-            const queryString = `timestamp=${timestamp}`;
-            const signature = this.createSignature(queryString);
-
-            const response = await fetch(`${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`, { // Použít this.baseUrl
-                headers: {
-                    'X-MBX-APIKEY': this.apiKey
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to get account balance: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error getting account balance:', error);
-            throw error;
-        }
-    }
-
-    public async getServerTime(): Promise<any> {
-        try {
-            const response = await fetch(`${this.baseUrl}/api/v3/time`); // Použít this.baseUrl
-            if (!response.ok) {
-                throw new Error(`Failed to get server time: ${response.status}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Error getting server time:', error);
-            throw error;
-        }
-    }
-
-    private createSignature(queryString: string): string {
-        return crypto
-            .createHmac('sha256', this.apiSecret)
-            .update(queryString)
-            .digest('hex');
-    }
+/**
+ * Fetches public kline (candlestick) data from the Binance public API.
+ * No API credentials required.
+ * @param symbol - Trading pair symbol, e.g. BTCUSDT
+ * @param interval - Kline interval, e.g. 1d, 4h, 15m
+ * @param limit - Number of klines to return (max 1000)
+ * @returns Array of raw Binance kline tuples
+ */
+export async function fetchKlines(
+  symbol: string,
+  interval: string,
+  limit: number,
+): Promise<BinanceKline[]> {
+  const response = await axios.get<BinanceKline[]>(`${BINANCE_BASE_URL}/api/v3/klines`, {
+    params: { symbol, interval, limit },
+  });
+  return response.data;
 }
