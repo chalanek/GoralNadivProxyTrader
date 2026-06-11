@@ -3,6 +3,17 @@ import jwt from 'jsonwebtoken';
 import config from '../config';
 import { JwtPayload } from '../types/auth';
 
+declare global {
+  namespace Express {
+    interface Request {
+      binanceCredentials?: {
+        apiKey: string;
+        secretKey: string;
+      };
+    }
+  }
+}
+
 /**
  * Express middleware that verifies a Bearer JWT and attaches Binance credentials to the request.
  * Returns 401 if the token is missing, malformed, or expired.
