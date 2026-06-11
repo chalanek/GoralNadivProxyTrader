@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { BinanceService } from '../services/binanceService';
+import { getErrorMessage } from '../utils/errors';
 
 /**
  * GET /balance/:currency
@@ -17,7 +18,7 @@ export async function getBalance(req: Request, res: Response): Promise<void> {
     const balance = await binance.getBalance(currency);
     res.json({ success: true, balance });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch balance';
+    const message = getErrorMessage(error, 'Failed to fetch balance');
     res.status(500).json({ success: false, message });
   }
 }

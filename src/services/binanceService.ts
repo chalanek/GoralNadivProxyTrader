@@ -8,21 +8,10 @@ import {
 
 const BINANCE_BASE_URL = 'https://api.binance.com';
 
-/**
- * Creates an HMAC-SHA256 signature for Binance signed endpoints.
- * @param queryString - URL-encoded query string to sign
- * @param secret - Binance API secret key
- * @returns Hex-encoded HMAC-SHA256 digest
- */
 function sign(queryString: string, secret: string): string {
   return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
 }
 
-/**
- * Serialises a params object to a URL query string (without leading '?').
- * @param params - Key/value pairs where values are strings or numbers
- * @returns Percent-encoded query string
- */
 function toQueryString(params: Record<string, string | number>): string {
   return new URLSearchParams(
     Object.entries(params).map(([k, v]) => [k, String(v)]),
@@ -36,18 +25,53 @@ export class BinanceService {
   ) {}
 
   /**
+   * Sends an authenticated GET request to a Binance signed endpoint.
+   * @param path - API path, e.g. /api/v3/account
+   * @param extraParams - Additional query params beyond `timestamp`
+   * @returns Parsed response body
+   */
+  private async signedGet<T>(
+    path: string,
+    extraParams: Record<string, string | number> = {},
+  ): Promise<T> {
+    const params: Record<string, string | number> = { ...extraParams, timestamp: Date.now() };
+    const qs = toQueryString(params);
+    const signature = sign(qs, this.secretKey);
+
+    const response = await axios.get<T>(`${BINANCE_BASE_URL}${path}`, {
+      params: { ...params, signature },
+      headers: { 'X-MBX-APIKEY': this.apiKey },
+    });
+    return response.data;
+  }
+
+  /**
+   * Sends an authenticated POST request to a Binance signed endpoint.
+   * @param path - API path, e.g. /api/v3/order
+   * @param extraParams - Order params beyond `timestamp`
+   * @returns Parsed response body
+   */
+  private async signedPost<T>(
+    path: string,
+    extraParams: Record<string, string | number>,
+  ): Promise<T> {
+    const params: Record<string, string | number> = { ...extraParams, timestamp: Date.now() };
+    const qs = toQueryString(params);
+    const signature = sign(qs, this.secretKey);
+
+    const response = await axios.post<T>(`${BINANCE_BASE_URL}${path}`, null, {
+      params: { ...params, signature },
+      headers: { 'X-MBX-APIKEY': this.apiKey },
+    });
+    return response.data;
+  }
+
+  /**
    * Validates the provided credentials by calling the authenticated Binance account endpoint.
    * Throws an AxiosError if credentials are rejected by Binance (HTTP 401/403).
    */
   async validateCredentials(): Promise<void> {
-    const timestamp = Date.now();
-    const qs = `timestamp=${timestamp}`;
-    const signature = sign(qs, this.secretKey);
-
-    await axios.get<BinanceAccountResponse>(`${BINANCE_BASE_URL}/api/v3/account`, {
-      params: { timestamp, signature },
-      headers: { 'X-MBX-APIKEY': this.apiKey },
-    });
+    await this.signedGet<BinanceAccountResponse>('/api/v3/account');
   }
 
   /**
@@ -56,21 +80,8 @@ export class BinanceService {
    * @returns Free balance as a decimal string; '0' when the asset is not found
    */
   async getBalance(currency: string): Promise<string> {
-    const timestamp = Date.now();
-    const qs = `timestamp=${timestamp}`;
-    const signature = sign(qs, this.secretKey);
-
-    const response = await axios.get<BinanceAccountResponse>(
-      `${BINANCE_BASE_URL}/api/v3/account`,
-      {
-        params: { timestamp, signature },
-        headers: { 'X-MBX-APIKEY': this.apiKey },
-      },
-    );
-
-    const asset = response.data.balances.find(
-      (b) => b.asset === currency.toUpperCase(),
-    );
+    const data = await this.signedGet<BinanceAccountResponse>('/api/v3/account');
+    const asset = data.balances.find((b) => b.asset === currency.toUpperCase());
     return asset?.free ?? '0';
   }
 
@@ -81,26 +92,12 @@ export class BinanceService {
    * @returns Binance order confirmation
    */
   async marketBuy(symbol: string, quoteOrderQty: number): Promise<BinanceOrderResponse> {
-    const timestamp = Date.now();
-    const params: Record<string, string | number> = {
+    return this.signedPost<BinanceOrderResponse>('/api/v3/order', {
       symbol,
       side: 'BUY',
       type: 'MARKET',
       quoteOrderQty,
-      timestamp,
-    };
-    const qs = toQueryString(params);
-    const signature = sign(qs, this.secretKey);
-
-    const response = await axios.post<BinanceOrderResponse>(
-      `${BINANCE_BASE_URL}/api/v3/order`,
-      null,
-      {
-        params: { ...params, signature },
-        headers: { 'X-MBX-APIKEY': this.apiKey },
-      },
-    );
-    return response.data;
+    });
   }
 
   /**
@@ -110,26 +107,12 @@ export class BinanceService {
    * @returns Binance order confirmation
    */
   async marketSell(symbol: string, quantity: number): Promise<BinanceOrderResponse> {
-    const timestamp = Date.now();
-    const params: Record<string, string | number> = {
+    return this.signedPost<BinanceOrderResponse>('/api/v3/order', {
       symbol,
       side: 'SELL',
       type: 'MARKET',
       quantity,
-      timestamp,
-    };
-    const qs = toQueryString(params);
-    const signature = sign(qs, this.secretKey);
-
-    const response = await axios.post<BinanceOrderResponse>(
-      `${BINANCE_BASE_URL}/api/v3/order`,
-      null,
-      {
-        params: { ...params, signature },
-        headers: { 'X-MBX-APIKEY': this.apiKey },
-      },
-    );
-    return response.data;
+    });
   }
 }
 

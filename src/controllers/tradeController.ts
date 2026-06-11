@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { BinanceService } from '../services/binanceService';
 import { BuyCryptoRequest, SellCryptoRequest, TradeResponse } from '../types/trade';
+import { getErrorMessage } from '../utils/errors';
 
 /**
  * POST /trade/buy-crypto
@@ -28,7 +29,7 @@ export async function buyCrypto(req: Request, res: Response): Promise<void> {
     };
     res.json(body);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Buy order failed';
+    const message = getErrorMessage(error, 'Buy order failed');
     res.status(500).json({ success: false, message } as TradeResponse);
   }
 }
@@ -59,7 +60,7 @@ export async function sellCrypto(req: Request, res: Response): Promise<void> {
     };
     res.json(body);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Sell order failed';
+    const message = getErrorMessage(error, 'Sell order failed');
     res.status(500).json({ success: false, message } as TradeResponse);
   }
 }

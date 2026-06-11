@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { BinanceService } from '../services/binanceService';
 import config from '../config';
 import { LoginRequest, LoginResponse } from '../types/auth';
+import { getErrorMessage } from '../utils/errors';
 
 /** JWT lifetime in seconds (24 h). */
 const JWT_EXPIRES_IN = 86400;
@@ -34,7 +35,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     const body: LoginResponse = { success: true, token, expiresIn: JWT_EXPIRES_IN };
     res.json(body);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Authentication failed';
+    const message = getErrorMessage(error, 'Authentication failed');
     res.status(401).json({ success: false, message } as LoginResponse);
   }
 }

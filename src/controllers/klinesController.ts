@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { fetchKlines } from '../services/binanceService';
+import { getErrorMessage } from '../utils/errors';
 
 /**
  * GET /klines
@@ -26,7 +27,7 @@ export async function getKlines(req: Request, res: Response): Promise<void> {
     const klines = await fetchKlines(symbol, interval, Number(limit));
     res.json(klines);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch klines';
+    const message = getErrorMessage(error, 'Failed to fetch klines');
     res.status(500).json({ success: false, message });
   }
 }
