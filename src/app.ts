@@ -11,6 +11,14 @@ const app = express();
 const PORT = config.PORT || 3000;
 
 app.use(json());
+
+// Public liveness probe for the external keep-warm ping (cron-job.org).
+// Registered BEFORE the global auth middleware so it needs no API key, and it
+// never calls Binance. Any inbound request also wakes the Render free instance.
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
 app.use(authenticate);
 setRoutes(app);
 app.use(errorHandler);
