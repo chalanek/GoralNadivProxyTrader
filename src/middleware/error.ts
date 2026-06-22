@@ -1,11 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 
-const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error(err.stack);
-    res.status(500).json({
-        message: 'An error occurred',
-        error: err.message,
-    });
+/** Global Express error handler for uncaught errors passed via next(err). */
+const errorHandler = (err: unknown, _req: Request, res: Response, _next: NextFunction): void => {
+  const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+  console.error(err);
+  res.status(500).json({ success: false, message });
 };
 
 export default errorHandler;

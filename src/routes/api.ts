@@ -1,26 +1,23 @@
-import { Router } from 'express';
-import { TradeController } from '../controllers/tradeController';
-import { TradeService } from '../services/tradeService';
 import { Application } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { login } from '../controllers/authController';
+import { getBalance } from '../controllers/balanceController';
+import { buyCrypto, sellCrypto } from '../controllers/tradeController';
+import { testBinance } from '../controllers/testController';
+import { getKlines } from '../controllers/klinesController';
 
-const router = Router();
-const tradeService = new TradeService();
-const tradeController = new TradeController(tradeService);
+/**
+ * Registers all application routes on the Express instance.
+ * @param app - Express application
+ */
+export function registerRoutes(app: Application): void {
+  // Public — no token required
+  app.post('/auth/login', login);
+  app.get('/test-binance', testBinance);
+  app.get('/klines', getKlines);
 
-export function setRoutes(app: Application) {
-    // Health check endpoint - bez autentizace
-    app.get('/health', (req, res) => {
-        res.status(200).json({
-            status: 'UP',
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV
-        });
-    });
-
-    // Zde začíná autentizace pro API
-    // app.use('/api', authMiddleware);  // Odkomentujte, pokud máte authMiddleware
-
-    app.use('/api/trade', router);
-    router.post('/create', tradeController.createTrade.bind(tradeController));
-    router.get('/status/:id', tradeController.getTradeStatus.bind(tradeController));
+  // Protected — Bearer JWT required
+  app.get('/balance/:currency', requireAuth, getBalance);
+  app.post('/trade/buy-crypto', requireAuth, buyCrypto);
+  app.post('/trade/sell-crypto', requireAuth, sellCrypto);
 }

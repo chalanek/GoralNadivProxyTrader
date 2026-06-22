@@ -45,12 +45,14 @@ crypto-proxy-service
 ## Setup Instructions
 
 1. Clone the repository:
+
    ```
    git clone <repository-url>
    cd crypto-proxy-service
    ```
 
 2. Install dependencies:
+
    ```
    npm install
    ```
@@ -69,3 +71,9 @@ crypto-proxy-service
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+
+## Check alive
+
+```
+$ curl https://goralnadivproxytrader.onrender.com/health
+```
